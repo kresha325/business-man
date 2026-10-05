@@ -1,4 +1,4 @@
-# EDI BUSINESS PLATFORM
+# business-man
 
 EDI is being built as a shared-data business platform with separate storefront, administration, and POS clients. The current implementation includes the initial multi-tenant model and authorization foundation, not the complete business system; see [the architecture and phase plan](./docs/architecture.md).
 
