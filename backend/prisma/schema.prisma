@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum BusinessType {
+  RETAIL
+  WHOLESALE
+  RESTAURANT
+  CAFE
+  PIZZERIA
+  ELECTRICAL
+  CONSTRUCTION
+  FURNITURE
+  SUPERMARKET
+  PHARMACY
+  SERVICES
+  OTHER
+}
+
+enum BusinessStatus {
+  ACTIVE
+  SUSPENDED
+  ARCHIVED
+}
+
+enum MembershipStatus {
+  ACTIVE
+  SUSPENDED
+  INVITED
+}
+
+enum PlanCode {
+  FREE
+  STARTER
+  PRO
+  BUSINESS
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIAL
+  PAST_DUE
+  CANCELED
+}
+
+model User {
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  passwordHash        String
+  displayName         String
+  status              UserStatus           @default(ACTIVE)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  roles               UserRole[]
+  sessions            AuthSession[]
+  auditLogs           AuditLog[]
+  businessMemberships BusinessMembership[]
+
+  @@index([status])
+}
+
+model Business {
+  id            String                 @id @default(cuid())
+  name          String
+  slug          String                 @unique
+  type          BusinessType
+  status        BusinessStatus         @default(ACTIVE)
+  country       String
+  city          String
+  address       String?
+  phone         String?
+  email         String?
+  currency      String                 @default("EUR")
+  vatRate       Decimal                @default(0) @db.Decimal(5, 2)
+  settings      Json                   @default("{}")
+  branding      Json                   @default("{}")
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  memberships   BusinessMembership[]
+  roles         BusinessRole[]
+  locations     BusinessLocation[]
+  features      BusinessFeature[]
+  subscriptions BusinessSubscription[]
+  auditLogs     AuditLog[]
+
+  @@index([status, createdAt])
+  @@index([type, status])
+}
+
+model BusinessMembership {
+  businessId String
+  userId     String
+  roleId     String
+  status     MembershipStatus @default(ACTIVE)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  business   Business         @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       BusinessRole     @relation(fields: [businessId, roleId], references: [businessId, id], onDelete: Restrict)
+
+  @@id([businessId, userId])
+  @@index([userId, status])
+  @@index([businessId, status])
+  @@index([businessId, roleId])
+}
+
+model BusinessRole {
+  id          String                  @default(cuid())
+  businessId  String
+  name        String
+  description String?
+  createdAt   DateTime                @default(now())
+  updatedAt   DateTime                @updatedAt
+  business    Business                @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  memberships BusinessMembership[]
+  permissions BusinessRolePermission[]
+
+  @@id([businessId, id])
+  @@unique([businessId, name])
+  @@index([businessId, createdAt])
+}
+
+model BusinessRolePermission {
+  businessId   String
+  roleId       String
+  permissionId String
+  role         BusinessRole @relation(fields: [businessId, roleId], references: [businessId, id], onDelete: Cascade)
+  permission   Permission   @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([businessId, roleId, permissionId])
+  @@index([permissionId])
+}
+
+model BusinessLocation {
+  id         String   @id @default(cuid())
+  businessId String
+  name       String
+  slug       String
+  country    String
+  city       String
+  address    String?
+  phone      String?
+  isActive   Boolean  @default(true)
+  settings   Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, slug])
+  @@unique([businessId, id])
+  @@index([businessId, isActive])
+}
+
+model BusinessFeature {
+  id         String   @id @default(cuid())
+  businessId String
+  key        String
+  enabled    Boolean  @default(false)
+  config     Json     @default("{}")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  @@unique([businessId, key])
+  @@index([businessId, enabled])
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  users       UserRole[]
+  permissions RolePermission[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  key         String           @unique
+  description String?
+  roles       RolePermission[]
+  businessRoles BusinessRolePermission[]
+}
+
+model UserRole {
+  userId String
+  roleId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+}
+
+model AuthSession {
+  id         String    @id @default(cuid())
+  userId     String
+  tokenHash  String    @unique
+  expiresAt  DateTime
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+  ipAddress  String?
+  userAgent  String?
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model AuditLog {
+  id         String    @id @default(cuid())
+  businessId String?
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  metadata   Json?
+  createdAt  DateTime  @default(now())
+  business   Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([businessId, createdAt])
+  @@index([userId, createdAt])
+  @@index([entityType, entityId, createdAt])
+}
+
+model SubscriptionPlan {
+  id            String                 @id @default(cuid())
+  code          PlanCode               @unique
+  name          String
+  limits        Json                   @default("{}")
+  features      Json                   @default("{}")
+  isActive      Boolean                @default(true)
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  subscriptions BusinessSubscription[]
+}
+
+model BusinessSubscription {
+  id        String             @id @default(cuid())
+  businessId String
+  planId    String
+  status    SubscriptionStatus @default(ACTIVE)
+  startsAt  DateTime           @default(now())
+  endsAt    DateTime?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+  business  Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  plan      SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([businessId, status, startsAt])
+  @@index([planId])
+}

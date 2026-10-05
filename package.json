@@ -1,0 +1,22 @@
+{
+  "name": "edi-business-platform",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "backend",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:ecommerce": "npm run dev --workspace @edi/ecommerce",
+    "dev:admin": "npm run dev --workspace @edi/admin",
+    "dev:pos": "npm run dev --workspace @edi/pos",
+    "dev:backend": "npm run dev --workspace @edi/backend",
+    "build": "npm run build --workspace @edi/validation && npm run build --workspace @edi/backend && npm run build --workspace @edi/ecommerce && npm run build --workspace @edi/admin && npm run build --workspace @edi/pos",
+    "typecheck": "npm run build --workspace @edi/validation && npm run typecheck --workspace @edi/backend && npm run typecheck --workspace @edi/shared-types && npm run typecheck --workspace @edi/ui && npm run typecheck --workspace @edi/validation && npm run typecheck --workspace @edi/ecommerce && npm run typecheck --workspace @edi/admin && npm run typecheck --workspace @edi/pos",
+    "test": "npm run build --workspace @edi/validation && npm run test --workspace @edi/backend",
+    "db:generate": "npm run db:generate --workspace @edi/backend",
+    "db:push": "npm run db:push --workspace @edi/backend",
+    "db:migrate": "npm run db:migrate --workspace @edi/backend"
+  }
+}
